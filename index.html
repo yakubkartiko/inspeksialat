@@ -413,12 +413,74 @@
     .foto-grid { grid-template-columns: repeat(4, 1fr); }
   }
 
+  /* ── EDIT MODE ───────────────────────────────────── */
+  .alat-item.editing {
+    border-color: var(--navy);
+    background: #f0f5fa;
+  }
+  .alat-edit-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 15px; color: var(--muted);
+    padding: 4px 6px; align-self: flex-start;
+    touch-action: manipulation;
+    min-width: 36px; min-height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 6px; transition: background .15s, color .15s;
+  }
+  @media (hover: hover) {
+    .alat-edit-btn:hover { background: #e0eaf5; color: var(--navy); }
+  }
+  .alat-edit-btn:active { background: #e0eaf5; color: var(--navy); }
+
+  /* ── EDIT PANEL (inline form) ─────────────────────── */
+  .edit-panel {
+    background: #fff; border: 2px solid var(--navy);
+    border-radius: 12px; padding: clamp(14px, 4vw, 20px);
+    margin-top: 10px; animation: slideDown .2s ease;
+  }
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .edit-panel-title {
+    font-size: 12px; font-weight: 700; color: var(--navy);
+    letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .edit-panel-close {
+    background: none; border: none; cursor: pointer;
+    font-size: 20px; color: var(--muted); padding: 0 4px;
+    touch-action: manipulation; min-width: 32px; min-height: 32px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ── DROPDOWN PILIH ALAT ──────────────────────────── */
+  .alat-picker {
+    background: var(--off); border-radius: 10px;
+    padding: 10px 12px; margin-bottom: 10px;
+  }
+  .alat-picker-label {
+    font-size: 11px; font-weight: 700; color: var(--muted);
+    letter-spacing: .8px; text-transform: uppercase;
+    margin-bottom: 6px; display: block;
+  }
+  .alat-select {
+    width: 100%; padding: 10px 36px 10px 12px;
+    border: 2px solid var(--border); border-radius: 9px;
+    font-size: max(16px, 14px); font-weight: 600;
+    color: var(--text); background: var(--white);
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center;
+    cursor: pointer; touch-action: manipulation;
+  }
+  .alat-select:focus { outline: none; border-color: var(--navy); }
+
   /* ── REDUCED MOTION ──────────────────────────────── */
   @media (prefers-reduced-motion: reduce) {
-    .btn, .progress-fill, .lab-btn, .kondisi-btn {
-      transition: none;
-    }
+    .btn, .progress-fill, .lab-btn, .kondisi-btn { transition: none; }
     .btn:active { transform: none; }
+    .edit-panel { animation: none; }
   }
 </style>
 </head>
@@ -467,6 +529,7 @@ let state = {
   submitId: null,
   camStream: null,
   camLive: false,
+  editIndex: null,   // index alat yang sedang diedit (null = tidak ada)
 };
 
 /* ── HELPERS ───────────────────────────────────────────────────────── */
@@ -487,6 +550,7 @@ function setProgress(pct, sub) {
 /* ── RENDER UTAMA ──────────────────────────────────────────────────── */
 function render() {
   stopCamera();
+  epStopCamera();
   if      (state.screen === "lab")     renderLab();
   else if (state.screen === "alat")    renderAlat();
   else if (state.screen === "review")  renderReview();
@@ -536,14 +600,86 @@ function renderAlat() {
   const n = state.alatList.length;
   setProgress(40, `Catat alat ke-${n+1} dari ${state.lab.nama}`);
 
+  // ── Edit panel HTML (inline form) ──────────────────
+  function editPanelHtml(idx) {
+    const a = state.alatList[idx];
+    const ep = state._ep || { nama: a.nama, jumlah: a.jumlah, kondisi: a.kondisi, catatan: a.catatan, fotos: a.fotos };
+
+    const epFotoGrid = ep.fotos && ep.fotos.length > 0 ? `
+      <div class="foto-grid">
+        ${ep.fotos.map((f,fi) => `
+          <div class="foto-cell">
+            <img src="${f}" class="foto-prev">
+            <button class="foto-del" onclick="epHapusFoto(${fi})">✕</button>
+            <span class="foto-num">${fi+1}</span>
+          </div>
+        `).join("")}
+      </div>` : "";
+
+    return `
+      <div class="edit-panel" id="editPanel${idx}">
+        <div class="edit-panel-title">
+          <span>✏️ Edit Alat #${idx+1}</span>
+          <button class="edit-panel-close" onclick="tutupEdit()">✕</button>
+        </div>
+
+        <label style="margin-top:0">Nama Alat <span style="color:var(--red)">*</span></label>
+        <input type="text" value="${ep.nama}" oninput="epUpdate('nama',this.value)" placeholder="Nama alat">
+
+        <label>Jumlah <span style="color:var(--red)">*</span></label>
+        <input type="number" min="1" value="${ep.jumlah}" oninput="epUpdate('jumlah',this.value)" placeholder="Jumlah">
+
+        <label>Kondisi <span style="color:var(--red)">*</span></label>
+        <div class="kondisi-group">
+          <button class="kondisi-btn baik ${ep.kondisi==='baik'?'active':''}" onclick="epSetKondisi('baik')">✅ Baik</button>
+          <button class="kondisi-btn rusak ${ep.kondisi==='rusak'?'active':''}" onclick="epSetKondisi('rusak')">⚠️ Rusak/Hilang</button>
+        </div>
+
+        <label>Foto</label>
+        ${epFotoGrid}
+        <div class="cam-area" id="epCamArea">
+          <div class="cam-idle" id="epCamIdle" onclick="epStartCamera()">
+            <span class="cam-icon">📸</span>
+            <span>${ep.fotos && ep.fotos.length > 0 ? "Tambah foto lagi" : "Tap untuk kamera"}</span>
+          </div>
+          <video id="epVid" autoplay playsinline muted style="width:100%;display:none;max-height:220px;object-fit:cover;"></video>
+        </div>
+        <div class="cam-controls" id="epCamCtrl">
+          <button class="btn btn-primary" style="flex:1" onclick="epJepret()">📷 Jepret</button>
+          <button class="btn btn-ghost" style="flex:0 0 auto;width:auto;padding:11px 16px;" onclick="epStopCamera()">✕</button>
+        </div>
+
+        <label>Catatan (opsional)</label>
+        <textarea oninput="epUpdate('catatan',this.value)" placeholder="mis. ada goresan...">${ep.catatan}</textarea>
+
+        <div class="btn-row" style="margin-top:16px;">
+          <button class="btn btn-ghost" onclick="tutupEdit()">Batal</button>
+          <button class="btn btn-primary" onclick="simpanEdit(${idx})"
+            ${ep.nama.trim() && ep.jumlah && ep.kondisi ? '' : 'disabled'} id="btnSimpanEdit">
+            💾 Simpan
+          </button>
+        </div>
+      </div>`;
+  }
+
   const ringkasanHtml = n === 0 ? "" : `
     <div class="card" style="padding:14px 16px;">
       <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;">
         SUDAH DICATAT <span class="counter-chip">${n}</span>
       </div>
+
+      ${n > 1 ? `
+      <div class="alat-picker">
+        <span class="alat-picker-label">Langsung ke alat tertentu</span>
+        <select class="alat-select" onchange="bukaPilihEdit(parseInt(this.value))" id="alatPicker">
+          <option value="-1">— Pilih alat untuk diedit —</option>
+          ${state.alatList.map((a,i) => `<option value="${i}" ${state.editIndex===i?'selected':''}>Alat #${i+1} · ${a.nama}</option>`).join("")}
+        </select>
+      </div>` : ""}
+
       <div class="alat-list">
         ${state.alatList.map((a,i) => `
-          <div class="alat-item">
+          <div class="alat-item ${state.editIndex===i?'editing':''}">
             ${a.fotos && a.fotos.length > 0
               ? `<img class="alat-thumb" src="${a.fotos[0]}">`
               : `<div class="alat-thumb-empty">📦</div>`}
@@ -553,8 +689,10 @@ function renderAlat() {
               ${a.catatan ? `<div class="alat-meta">${a.catatan}</div>` : ""}
             </div>
             <span class="badge ${a.kondisi}">${a.kondisi === "baik" ? "Baik" : "Rusak"}</span>
+            <button class="alat-edit-btn" onclick="bukaEdit(${i})" title="Edit">✏️</button>
             <button class="alat-delete" onclick="hapusAlat(${i})" title="Hapus">✕</button>
           </div>
+          ${state.editIndex === i ? editPanelHtml(i) : ""}
         `).join("")}
       </div>
     </div>
@@ -659,6 +797,134 @@ function hapusFoto(i) {
 
 function hapusAlat(i) {
   state.alatList.splice(i, 1);
+  if(state.editIndex === i) { state.editIndex = null; state._ep = null; }
+  else if(state.editIndex > i) state.editIndex--;
+  renderAlat();
+}
+
+/* ── EDIT ALAT ─────────────────────────────────────────────────────── */
+function bukaEdit(i) {
+  if(state.editIndex === i) { tutupEdit(); return; }
+  epStopCamera();
+  const a = state.alatList[i];
+  state.editIndex = i;
+  state._ep = { nama: a.nama, jumlah: a.jumlah, kondisi: a.kondisi, catatan: a.catatan, fotos: [...a.fotos] };
+  renderAlat();
+  // Scroll ke panel edit
+  setTimeout(() => {
+    const el = document.getElementById("editPanel" + i);
+    if(el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, 80);
+}
+
+function bukaPilihEdit(i) {
+  if(i < 0) return;
+  bukaEdit(i);
+}
+
+function tutupEdit() {
+  epStopCamera();
+  state.editIndex = null;
+  state._ep = null;
+  renderAlat();
+}
+
+function epUpdate(field, val) {
+  if(!state._ep) return;
+  state._ep[field] = val;
+  // update tombol simpan
+  const btn = document.getElementById("btnSimpanEdit");
+  if(btn) btn.disabled = !(state._ep.nama.trim() && state._ep.jumlah && state._ep.kondisi);
+}
+
+function epSetKondisi(k) {
+  if(!state._ep) return;
+  state._ep.kondisi = k;
+  // re-render edit panel saja (supaya highlight aktif ter-update)
+  renderAlat();
+}
+
+function simpanEdit(i) {
+  if(!state._ep || !state._ep.nama.trim() || !state._ep.jumlah || !state._ep.kondisi) return;
+  epStopCamera();
+  state.alatList[i] = {
+    nama:    state._ep.nama.trim(),
+    jumlah:  state._ep.jumlah,
+    kondisi: state._ep.kondisi,
+    catatan: state._ep.catatan,
+    fotos:   [...state._ep.fotos],
+  };
+  state.editIndex = null;
+  state._ep = null;
+  renderAlat();
+}
+
+/* ── KAMERA UNTUK EDIT PANEL ──────────────────────────────────────── */
+let _epCamStream = null;
+
+async function epStartCamera() {
+  const vid  = document.getElementById("epVid");
+  const idle = document.getElementById("epCamIdle");
+  const ctrl = document.getElementById("epCamCtrl");
+  if(!vid) return;
+  try {
+    _epCamStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode:"environment", width:{ideal:1280}, height:{ideal:720} },
+      audio: false
+    });
+    vid.srcObject = _epCamStream;
+    vid.style.display = "block";
+    if(idle) idle.style.display = "none";
+    if(ctrl) ctrl.classList.add("show");
+  } catch(err) { alert("Tidak bisa akses kamera: " + err.message); }
+}
+
+function epStopCamera() {
+  if(_epCamStream) {
+    _epCamStream.getTracks().forEach(t=>t.stop());
+    _epCamStream = null;
+  }
+}
+
+function epJepret() {
+  const vid = document.getElementById("epVid");
+  if(!vid || !_epCamStream || !state._ep) return;
+  const cvs = document.createElement("canvas");
+  cvs.width  = vid.videoWidth  || 1280;
+  cvs.height = vid.videoHeight || 720;
+  const ctx = cvs.getContext("2d");
+  ctx.drawImage(vid, 0, 0);
+  const namaAlat = state._ep.nama.trim() || "alat";
+  const labId    = state.lab ? state.lab.id.toUpperCase() : "KKL3";
+  const wm = labId + "_" + namaAlat + "  ·  " + fmtNow();
+  ctx.font = "bold 16px 'Segoe UI',sans-serif";
+  const tw = ctx.measureText(wm).width;
+  const ph = 26, pw = tw + 20;
+  ctx.fillStyle = "rgba(0,65,107,.80)";
+  ctx.fillRect(8, cvs.height - ph - 8, pw, ph);
+  ctx.fillStyle = "#fbd504";
+  ctx.fillText(wm, 18, cvs.height - 12);
+  const dataUrl = cvs.toDataURL("image/jpeg", 0.82);
+  state._ep.fotos.push(dataUrl);
+  const prevStream = _epCamStream;
+  _epCamStream = null;
+  renderAlat();
+  // Reattach ke video baru
+  const vid2 = document.getElementById("epVid");
+  const ctrl = document.getElementById("epCamCtrl");
+  const idle = document.getElementById("epCamIdle");
+  if(vid2 && prevStream) {
+    _epCamStream = prevStream;
+    vid2.srcObject = _epCamStream;
+    vid2.style.display = "block";
+    if(idle) idle.style.display = "none";
+    if(ctrl) ctrl.classList.add("show");
+  }
+}
+
+function epHapusFoto(fi) {
+  if(!state._ep) return;
+  state._ep.fotos.splice(fi, 1);
   renderAlat();
 }
 
@@ -762,12 +1028,65 @@ function jepret() {
   }
 }
 
-/* ── BAGIAN 3: Review & Submit ─────────────────────────────────────── */
 function renderReview() {
   setProgress(80, "Konfirmasi sebelum mengirim");
   const baik  = state.alatList.filter(a=>a.kondisi==="baik").length;
   const rusak = state.alatList.filter(a=>a.kondisi==="rusak").length;
   const canSend = state.namaPetugas.trim() && !state.sending;
+  const n = state.alatList.length;
+
+  // Edit panel untuk review (sama strukturnya, beda id prefix)
+  function reviewEditPanelHtml(idx) {
+    const ep = state._ep || {};
+    const epFotoGrid = ep.fotos && ep.fotos.length > 0 ? `
+      <div class="foto-grid">
+        ${ep.fotos.map((f,fi) => `
+          <div class="foto-cell">
+            <img src="${f}" class="foto-prev">
+            <button class="foto-del" onclick="epHapusFoto(${fi})">✕</button>
+            <span class="foto-num">${fi+1}</span>
+          </div>
+        `).join("")}
+      </div>` : "";
+    return `
+      <div class="edit-panel" id="editPanel${idx}">
+        <div class="edit-panel-title">
+          <span>✏️ Edit Alat #${idx+1}</span>
+          <button class="edit-panel-close" onclick="tutupEditReview()">✕</button>
+        </div>
+        <label style="margin-top:0">Nama Alat <span style="color:var(--red)">*</span></label>
+        <input type="text" value="${ep.nama||''}" oninput="epUpdate('nama',this.value)" placeholder="Nama alat">
+        <label>Jumlah <span style="color:var(--red)">*</span></label>
+        <input type="number" min="1" value="${ep.jumlah||''}" oninput="epUpdate('jumlah',this.value)" placeholder="Jumlah">
+        <label>Kondisi <span style="color:var(--red)">*</span></label>
+        <div class="kondisi-group">
+          <button class="kondisi-btn baik ${ep.kondisi==='baik'?'active':''}" onclick="epSetKondisiReview('baik')">✅ Baik</button>
+          <button class="kondisi-btn rusak ${ep.kondisi==='rusak'?'active':''}" onclick="epSetKondisiReview('rusak')">⚠️ Rusak/Hilang</button>
+        </div>
+        <label>Foto</label>
+        ${epFotoGrid}
+        <div class="cam-area">
+          <div class="cam-idle" id="epCamIdle" onclick="epStartCamera()">
+            <span class="cam-icon">📸</span>
+            <span>${ep.fotos && ep.fotos.length > 0 ? "Tambah foto lagi" : "Tap untuk kamera"}</span>
+          </div>
+          <video id="epVid" autoplay playsinline muted style="width:100%;display:none;max-height:220px;object-fit:cover;"></video>
+        </div>
+        <div class="cam-controls" id="epCamCtrl">
+          <button class="btn btn-primary" style="flex:1" onclick="epJepret()">📷 Jepret</button>
+          <button class="btn btn-ghost" style="flex:0 0 auto;width:auto;padding:11px 16px;" onclick="epStopCamera()">✕</button>
+        </div>
+        <label>Catatan (opsional)</label>
+        <textarea oninput="epUpdate('catatan',this.value)" placeholder="mis. ada goresan...">${ep.catatan||''}</textarea>
+        <div class="btn-row" style="margin-top:16px;">
+          <button class="btn btn-ghost" onclick="tutupEditReview()">Batal</button>
+          <button class="btn btn-primary" id="btnSimpanEdit" onclick="simpanEditReview(${idx})"
+            ${ep.nama && ep.nama.trim() && ep.jumlah && ep.kondisi ? '' : 'disabled'}>
+            💾 Simpan
+          </button>
+        </div>
+      </div>`;
+  }
 
   app().innerHTML = `
     <div class="card">
@@ -777,7 +1096,7 @@ function renderReview() {
 
       <div class="summary-box">
         <div class="summary-row"><span>Lab / Sumber</span><span>${state.lab.nama}</span></div>
-        <div class="summary-row"><span>Total Alat</span><span>${state.alatList.length} item</span></div>
+        <div class="summary-row"><span>Total Alat</span><span>${n} item</span></div>
         <div class="summary-row"><span>Kondisi Baik</span><span style="color:var(--green)">${baik} item</span></div>
         <div class="summary-row"><span>Rusak/Hilang</span><span style="color:var(--red)">${rusak} item</span></div>
       </div>
@@ -787,12 +1106,22 @@ function renderReview() {
         value="${state.namaPetugas}"
         oninput="state.namaPetugas=this.value;updateSendBtn()">
 
-      <div style="margin-top:16px;margin-bottom:8px;font-size:13px;font-weight:700;color:var(--muted);">
+      <div style="margin-top:18px;margin-bottom:6px;font-size:13px;font-weight:700;color:var(--muted);">
         DAFTAR ALAT
       </div>
+
+      ${n > 1 ? `
+      <div class="alat-picker" style="margin-bottom:8px;">
+        <span class="alat-picker-label">Langsung ke alat tertentu</span>
+        <select class="alat-select" onchange="bukaEditReview(parseInt(this.value))">
+          <option value="-1">— Pilih alat untuk diedit —</option>
+          ${state.alatList.map((a,i) => `<option value="${i}" ${state.editIndex===i?'selected':''}>Alat #${i+1} · ${a.nama}</option>`).join("")}
+        </select>
+      </div>` : ""}
+
       <div class="alat-list">
-        ${state.alatList.map(a => `
-          <div class="alat-item">
+        ${state.alatList.map((a,i) => `
+          <div class="alat-item ${state.editIndex===i?'editing':''}">
             ${a.fotos && a.fotos.length > 0
               ? `<img class="alat-thumb" src="${a.fotos[0]}">`
               : `<div class="alat-thumb-empty">📦</div>`}
@@ -802,14 +1131,16 @@ function renderReview() {
               ${a.catatan ? `<div class="alat-meta">${a.catatan}</div>` : ""}
             </div>
             <span class="badge ${a.kondisi}">${a.kondisi === "baik" ? "Baik" : "Rusak"}</span>
+            <button class="alat-edit-btn" onclick="bukaEditReview(${i})" title="Edit">✏️</button>
           </div>
+          ${state.editIndex === i ? reviewEditPanelHtml(i) : ""}
         `).join("")}
       </div>
 
       ${state.sendError ? `<div class="error-box" style="margin-top:14px;">${state.sendError}</div>` : ""}
 
       <div class="btn-row" style="margin-top:20px;">
-        <button class="btn btn-ghost" onclick="state.screen='alat';render()">Tambah Alat Lagi</button>
+        <button class="btn btn-ghost" onclick="kembaliKeAlatDariReview()">+ Tambah Alat Lagi</button>
       </div>
       <div class="btn-row">
         <button class="btn btn-green" id="btnSend" onclick="submitData()" ${canSend?'':'disabled'}>
@@ -818,6 +1149,56 @@ function renderReview() {
       </div>
     </div>
   `;
+}
+
+function bukaEditReview(i) {
+  if(i < 0) return;
+  if(state.editIndex === i) { tutupEditReview(); return; }
+  epStopCamera();
+  const a = state.alatList[i];
+  state.editIndex = i;
+  state._ep = { nama: a.nama, jumlah: a.jumlah, kondisi: a.kondisi, catatan: a.catatan, fotos: [...a.fotos] };
+  renderReview();
+  setTimeout(() => {
+    const el = document.getElementById("editPanel" + i);
+    if(el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, 80);
+}
+
+function tutupEditReview() {
+  epStopCamera();
+  state.editIndex = null;
+  state._ep = null;
+  renderReview();
+}
+
+function epSetKondisiReview(k) {
+  if(!state._ep) return;
+  state._ep.kondisi = k;
+  renderReview();
+}
+
+function simpanEditReview(i) {
+  if(!state._ep || !state._ep.nama.trim() || !state._ep.jumlah || !state._ep.kondisi) return;
+  epStopCamera();
+  state.alatList[i] = {
+    nama:    state._ep.nama.trim(),
+    jumlah:  state._ep.jumlah,
+    kondisi: state._ep.kondisi,
+    catatan: state._ep.catatan,
+    fotos:   [...state._ep.fotos],
+  };
+  state.editIndex = null;
+  state._ep = null;
+  renderReview();
+}
+
+function kembaliKeAlatDariReview() {
+  epStopCamera();
+  state.editIndex = null;
+  state._ep = null;
+  state.screen = "alat";
+  render();
 }
 
 function updateSendBtn() {
@@ -902,12 +1283,14 @@ function renderSuccess() {
 }
 
 function mulaiLagi() {
+  epStopCamera();
   state = {
     screen: "lab", lab: null, namaPetugas: "",
     alatList: [], inputNama: "", inputJumlah: "",
     inputKondisi: null, inputCatatan: "", inputFoto: null,
     sending: false, sendError: null, submitId: null,
     camStream: null, camLive: false,
+    editIndex: null, _ep: null,
   };
   render();
 }
@@ -917,4 +1300,3 @@ render();
 </script>
 </body>
 </html>
-HTMLEOF
