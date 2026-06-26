@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Form Pengambilan Alat — KKL III</title>
+<style>
+  :root {
+    --navy:   #00416b;
+    --gold:   #fbd504;
+    --white:  #ffffff;
+    --off:    #f5f6f8;
+    --border: #dde1e7;
+    --text:   #1a1d23;
+    --muted:  #6b7280;
+    --green:  #16a34a;
+    --red:    #dc2626;
+    --radius: 12px;
+    --shadow: 0 2px 12px rgba(0,0,0,.08);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--off);
+    color: var(--text);
+    min-height: 100dvh;
+  }
+
+  /* ── HEADER ─────────────────────────────────────── */
+  .app-header {
+    background: var(--navy);
+    color: var(--white);
+    padding: 16px 20px 14px;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,.18);
+  }
+  .app-header h1 { font-size: 15px; font-weight: 700; letter-spacing: .3px; }
+  .app-header p  { font-size: 11px; color: rgba(255,255,255,.65); margin-top: 2px; }
+
+  /* ── PROGRESS BAR ────────────────────────────────── */
+  .progress-bar {
+    height: 4px;
+    background: rgba(255,255,255,.2);
+    border-radius: 2px;
+    margin-top: 10px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--gold);
+    border-radius: 2px;
+    transition: width .4s ease;
+  }
+
+  /* ── CARD ────────────────────────────────────────── */
+  .card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 22px 18px;
+    margin: 16px;
+  }
+  .card-title {
+    font-size: 11px; font-weight: 700; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--navy);
+    margin-bottom: 4px;
+  }
+  .card-heading {
+    font-size: 19px; font-weight: 800; color: var(--text);
+    margin-bottom: 6px; line-height: 1.25;
+  }
+  .card-sub {
+    font-size: 13px; color: var(--muted); margin-bottom: 18px; line-height: 1.5;
+  }
+
+  /* ── LAB GRID ────────────────────────────────────── */
+  .lab-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .lab-btn {
+    display: flex; align-items: center; gap: 12px;
+    border: 2px solid var(--border);
+    background: var(--white);
+    border-radius: 10px;
+    padding: 14px 16px;
+    cursor: pointer;
+    font-size: 14px; font-weight: 600; color: var(--text);
+    transition: border-color .15s, background .15s;
+    text-align: left;
+  }
+  .lab-btn:hover { border-color: var(--navy); background: #f0f5fa; }
+  .lab-btn .lab-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: var(--navy); color: var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+
+  /* ── FORM FIELDS ─────────────────────────────────── */
+  label { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px; margin-top: 16px; }
+  label:first-of-type { margin-top: 0; }
+
+  input[type=text], input[type=number], textarea, select {
+    width: 100%; padding: 11px 13px;
+    border: 2px solid var(--border); border-radius: 9px;
+    font-size: 14px; color: var(--text);
+    background: var(--white);
+    transition: border-color .15s;
+    appearance: none;
+  }
+  input[type=text]:focus, input[type=number]:focus, textarea:focus, select:focus {
+    outline: none; border-color: var(--navy);
+  }
+  textarea { resize: vertical; min-height: 72px; font-family: inherit; }
+
+  /* ── KONDISI TOGGLE ──────────────────────────────── */
+  .kondisi-group {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .kondisi-btn {
+    padding: 11px; border: 2px solid var(--border); border-radius: 9px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    background: var(--white); transition: all .15s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .kondisi-btn.baik.active  { border-color: var(--green); background: #f0fdf4; color: var(--green); }
+  .kondisi-btn.rusak.active { border-color: var(--red);   background: #fef2f2; color: var(--red); }
+  .kondisi-btn:not(.active):hover { border-color: #aab; }
+
+  /* ── KAMERA ──────────────────────────────────────── */
+  .cam-area {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: #f8fafc;
+    margin-top: 4px;
+  }
+  .cam-idle {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 28px 16px; gap: 8px; cursor: pointer;
+  }
+  .cam-idle .cam-icon { font-size: 32px; }
+  .cam-idle span { font-size: 13px; color: var(--muted); font-weight: 500; }
+  video { width: 100%; display: block; max-height: 280px; object-fit: cover; }
+  canvas { display: none; }
+
+  .cam-controls {
+    display: none;
+    padding: 10px 12px;
+    background: var(--white);
+    border-top: 1px solid var(--border);
+    gap: 8px;
+  }
+  .cam-controls.show { display: flex; }
+
+  .preview-img {
+    width: 100%; border-radius: 10px;
+    display: block; margin-top: 4px;
+    max-height: 220px; object-fit: cover;
+  }
+
+  /* ── DAFTAR ALAT (ringkasan loop) ────────────────── */
+  .alat-list { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+  .alat-item {
+    border: 1.5px solid var(--border);
+    border-radius: 9px;
+    padding: 10px 13px;
+    display: flex; align-items: flex-start; gap: 10px;
+    background: var(--white);
+  }
+  .alat-item .alat-thumb {
+    width: 44px; height: 44px; object-fit: cover;
+    border-radius: 7px; flex-shrink: 0;
+    background: var(--off);
+  }
+  .alat-item .alat-thumb-empty {
+    width: 44px; height: 44px; border-radius: 7px;
+    background: var(--off); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; color: var(--muted);
+  }
+  .alat-info { flex: 1; min-width: 0; }
+  .alat-info strong { font-size: 14px; display: block; margin-bottom: 2px; }
+  .alat-info .alat-meta { font-size: 12px; color: var(--muted); }
+  .badge {
+    font-size: 11px; font-weight: 700; padding: 2px 8px;
+    border-radius: 20px; flex-shrink: 0;
+    align-self: flex-start; margin-top: 3px;
+  }
+  .badge.baik  { background: #dcfce7; color: var(--green); }
+  .badge.rusak { background: #fee2e2; color: var(--red); }
+
+  .alat-delete {
+    background: none; border: none; cursor: pointer;
+    font-size: 18px; color: #ccc; padding: 0 2px;
+    align-self: flex-start;
+    transition: color .15s;
+  }
+  .alat-delete:hover { color: var(--red); }
+
+  /* ── SUMMARY BOX ─────────────────────────────────── */
+  .summary-box {
+    background: var(--off);
+    border-radius: 9px;
+    padding: 14px;
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+  .summary-row { display: flex; justify-content: space-between; padding: 3px 0; }
+  .summary-row span:first-child { color: var(--muted); }
+  .summary-row span:last-child  { font-weight: 600; }
+
+  /* ── TOMBOL ──────────────────────────────────────── */
+  .btn {
+    display: block; width: 100%; padding: 14px;
+    border: none; border-radius: 10px;
+    font-size: 15px; font-weight: 700;
+    cursor: pointer; transition: opacity .15s, transform .1s;
+    text-align: center;
+  }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-primary { background: var(--navy); color: var(--white); }
+  .btn-gold    { background: var(--gold); color: var(--navy); }
+  .btn-ghost   {
+    background: transparent; color: var(--navy);
+    border: 2px solid var(--border);
+    font-size: 14px;
+  }
+  .btn-danger  { background: var(--red); color: var(--white); }
+  .btn-green   { background: var(--green); color: var(--white); }
+
+  .btn-row { display: flex; gap: 8px; margin-top: 12px; }
+  .btn-row .btn { flex: 1; }
+
+  /* ── SUCCESS ─────────────────────────────────────── */
+  .success-screen {
+    padding: 40px 24px;
+    text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+  }
+  .success-icon {
+    width: 72px; height: 72px; border-radius: 50%;
+    background: #dcfce7;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 34px;
+  }
+  .success-screen h2 { font-size: 22px; font-weight: 800; color: var(--navy); }
+  .success-screen p  { font-size: 14px; color: var(--muted); line-height: 1.6; }
+  .success-id {
+    background: var(--off); border-radius: 8px;
+    padding: 10px 18px; font-size: 13px;
+    font-weight: 700; color: var(--navy); letter-spacing: .5px;
+  }
+
+  /* ── ERROR BOX ───────────────────────────────────── */
+  .error-box {
+    background: #fef2f2; border: 1.5px solid #fca5a5;
+    border-radius: 9px; padding: 12px 14px;
+    font-size: 13px; color: var(--red);
+    margin-bottom: 10px; line-height: 1.5;
+  }
+
+  /* ── COUNTER BADGE ───────────────────────────────── */
+  .counter-chip {
+    display: inline-flex; align-items: center;
+    background: var(--navy); color: var(--gold);
+    font-size: 12px; font-weight: 700;
+    padding: 3px 10px; border-radius: 20px;
+    margin-left: 8px;
+  }
+
+  /* ── STEP INDICATOR ──────────────────────────────── */
+  .step-eye {
+    font-size: 12px; color: var(--muted);
+    margin-bottom: 16px; display: flex; align-items: center; gap: 6px;
+  }
+  .step-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--border); flex-shrink: 0;
+  }
+  .step-dot.active { background: var(--navy); }
+
+  /* ── FOTO GRID (multi-foto per alat) ────────────────── */
+  .foto-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .foto-cell {
+    position: relative; border-radius: 8px; overflow: hidden;
+    aspect-ratio: 1; background: var(--off);
+  }
+  .foto-prev {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+  }
+  .foto-del {
+    position: absolute; top: 4px; right: 4px;
+    background: rgba(0,0,0,.55); color: #fff;
+    border: none; border-radius: 50%;
+    width: 22px; height: 22px;
+    font-size: 11px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .foto-num {
+    position: absolute; bottom: 4px; left: 6px;
+    font-size: 10px; font-weight: 700;
+    background: rgba(0,65,107,.7); color: #fbd504;
+    padding: 1px 5px; border-radius: 4px;
+  }
+
+  @media (min-width: 520px) {
+    .lab-grid { grid-template-columns: 1fr 1fr; }
+    .card { margin: 20px auto; max-width: 480px; }
+    .app-header { padding: 16px 24px 14px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <h1>Form Pengambilan Alat — KKL III</h1>
+  <p id="headerSub">Pilih laboratorium untuk memulai</p>
+  <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+</div>
+
+<div id="app"></div>
+
+<canvas id="cvs"></canvas>
+<video id="vid" autoplay playsinline muted></video>
+
+<script>
+/* ── KONFIGURASI ───────────────────────────────────────────────────── */
+// Ganti dengan URL Web App Google Apps Script untuk form PENGAMBILAN (baru/terpisah)
+const GAS_URL_AMBIL = "GANTI_DENGAN_URL_WEB_APP_PENGAMBILAN";
+
+/* ── DATA LAB ──────────────────────────────────────────────────────── */
+const LAB_LIST = [
+  { id:"sig",    nama:"Lab. Sistem Informasi Geografis", icon:"🗺️" },
+  { id:"pj",     nama:"Lab. Penginderaan Jauh",          icon:"🛰️" },
+  { id:"karto",  nama:"Lab. Kartografi",                 icon:"📐" },
+  { id:"geomor", nama:"Lab. Geomorfologi Lingkungan & Mitigasi Bencana", icon:"⛰️" },
+  { id:"geofi",  nama:"Lab. Geofisika",                  icon:"🧲" },
+  { id:"vendor", nama:"Vendor",                          icon:"🏪" },
+];
+
+/* ── STATE ─────────────────────────────────────────────────────────── */
+let state = {
+  screen: "lab",         // lab | alat | review | success
+  lab: null,             // {id, nama}
+  namaPetugas: "",
+  alatList: [],          // [{nama, jumlah, kondisi, catatan, fotos:[]}]
+  // state sementara saat ngisi 1 alat:
+  inputNama: "",
+  inputJumlah: "",
+  inputKondisi: null,    // "baik"|"rusak"
+  inputCatatan: "",
+  inputFotos: [],        // array base64 dataURL (multi-foto)
+  sending: false,
+  sendError: null,
+  submitId: null,
+  camStream: null,
+  camLive: false,
+};
+
+/* ── HELPERS ───────────────────────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+const app = () => $("app");
+
+function fmtNow() {
+  const d = new Date();
+  const p = n => String(n).padStart(2,"0");
+  return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function setProgress(pct, sub) {
+  $("progressFill").style.width = pct + "%";
+  if(sub) $("headerSub").textContent = sub;
+}
+
+/* ── RENDER UTAMA ──────────────────────────────────────────────────── */
+function render() {
+  stopCamera();
+  if      (state.screen === "lab")     renderLab();
+  else if (state.screen === "alat")    renderAlat();
+  else if (state.screen === "review")  renderReview();
+  else if (state.screen === "success") renderSuccess();
+}
+
+/* ── BAGIAN 1: Pilih Lab ───────────────────────────────────────────── */
+function renderLab() {
+  setProgress(10, "Pilih laboratorium untuk memulai");
+  app().innerHTML = `
+    <div class="card">
+      <div class="card-title">Langkah 1 / 3</div>
+      <div class="card-heading">Dari Laboratorium Mana?</div>
+      <div class="card-sub">Pilih sumber alat yang akan diambil.</div>
+      <div class="lab-grid">
+        ${LAB_LIST.map(l => `
+          <button class="lab-btn" onclick="pilihLab('${l.id}')">
+            <span class="lab-icon">${l.icon}</span>
+            <span>${l.nama}</span>
+          </button>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function pilihLab(id) {
+  state.lab = LAB_LIST.find(l => l.id === id);
+  state.alatList = [];
+  state.namaPetugas = "";
+  resetInputAlat();
+  state.screen = "alat";
+  render();
+}
+
+/* ── BAGIAN 2: Input Alat (LOOP) ───────────────────────────────────── */
+function resetInputAlat() {
+  state.inputNama    = "";
+  state.inputJumlah  = "";
+  state.inputKondisi = null;
+  state.inputCatatan = "";
+  state.inputFotos   = [];
+  state.camLive      = false;
+}
+
+function renderAlat() {
+  const n = state.alatList.length;
+  setProgress(40, `Catat alat ke-${n+1} dari ${state.lab.nama}`);
+
+  const ringkasanHtml = n === 0 ? "" : `
+    <div class="card" style="padding:14px 16px;">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;">
+        SUDAH DICATAT <span class="counter-chip">${n}</span>
+      </div>
+      <div class="alat-list">
+        ${state.alatList.map((a,i) => `
+          <div class="alat-item">
+            ${a.fotos && a.fotos.length > 0
+              ? `<img class="alat-thumb" src="${a.fotos[0]}">`
+              : `<div class="alat-thumb-empty">📦</div>`}
+            <div class="alat-info">
+              <strong>${a.nama}</strong>
+              <div class="alat-meta">Jml: ${a.jumlah} · ${a.kondisi === "baik" ? "✅ Baik" : "⚠️ Rusak/Hilang"} · 📸 ${a.fotos ? a.fotos.length : 0} foto</div>
+              ${a.catatan ? `<div class="alat-meta">${a.catatan}</div>` : ""}
+            </div>
+            <span class="badge ${a.kondisi}">${a.kondisi === "baik" ? "Baik" : "Rusak"}</span>
+            <button class="alat-delete" onclick="hapusAlat(${i})" title="Hapus">✕</button>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+
+  // Grid preview foto yang sudah diambil
+  const fotoGridHtml = state.inputFotos.length > 0 ? `
+    <div class="foto-grid">
+      ${state.inputFotos.map((f,fi) => `
+        <div class="foto-cell">
+          <img src="${f}" class="foto-prev">
+          <button class="foto-del" onclick="hapusFoto(${fi})">✕</button>
+          <span class="foto-num">${fi+1}</span>
+        </div>
+      `).join("")}
+    </div>
+  ` : "";
+
+  const fotoHtml = `
+    ${fotoGridHtml}
+    <div class="cam-area" id="camArea">
+      <div class="cam-idle" id="camIdle" onclick="startCamera()">
+        <span class="cam-icon">📸</span>
+        <span>${state.inputFotos.length > 0 ? "Tambah foto lagi" : "Tap untuk aktifkan kamera"}</span>
+      </div>
+      <video id="vid2" autoplay playsinline muted style="width:100%;display:none;max-height:260px;object-fit:cover;"></video>
+    </div>
+    <div class="cam-controls" id="camCtrl">
+      <button class="btn btn-primary" style="flex:1" onclick="jepret()">📷 Jepret</button>
+      <button class="btn btn-ghost" style="flex:0 0 auto;width:auto;padding:11px 16px;" onclick="stopCamera()">✕</button>
+    </div>
+    ${state.inputFotos.length > 0 ? `<div style="font-size:12px;color:var(--muted);margin-top:6px;text-align:center;">${state.inputFotos.length} foto diambil · tap kamera untuk tambah lagi</div>` : ""}
+  `;
+
+  const canAdd = state.inputNama.trim() && state.inputJumlah && state.inputKondisi;
+
+  app().innerHTML = `
+    ${ringkasanHtml}
+    <div class="card">
+      <div class="card-title">Langkah 2 / 3 · ${state.lab.nama}</div>
+      <div class="card-heading">Catat Alat #${n+1}</div>
+      <div class="card-sub">Isi detail alat, lalu pilih Tambah Alat atau Selesai.</div>
+
+      <label>Nama Alat <span style="color:var(--red)">*</span></label>
+      <input type="text" id="iNama" placeholder="contoh: GPS Garmin 64s"
+        value="${state.inputNama}"
+        oninput="state.inputNama=this.value;updateAddBtn()">
+
+      <label>Jumlah <span style="color:var(--red)">*</span></label>
+      <input type="number" id="iJumlah" placeholder="contoh: 2" min="1"
+        value="${state.inputJumlah}"
+        oninput="state.inputJumlah=this.value;updateAddBtn()">
+
+      <label>Kondisi <span style="color:var(--red)">*</span></label>
+      <div class="kondisi-group">
+        <button class="kondisi-btn baik ${state.inputKondisi==='baik'?'active':''}"
+          onclick="setKondisi('baik')">✅ Baik</button>
+        <button class="kondisi-btn rusak ${state.inputKondisi==='rusak'?'active':''}"
+          onclick="setKondisi('rusak')">⚠️ Rusak/Hilang</button>
+      </div>
+
+      <label>Foto Alat</label>
+      ${fotoHtml}
+
+      <label>Catatan (opsional)</label>
+      <textarea id="iCatatan" placeholder="mis. ada goresan di layar, baterai lemah..."
+        oninput="state.inputCatatan=this.value">${state.inputCatatan}</textarea>
+
+      <div class="btn-row" style="margin-top:20px;">
+        <button class="btn btn-ghost" onclick="kembaliKeLab()">Ganti Lab</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btnTambah" onclick="tambahAlat()" ${canAdd?'':'disabled'}>
+          + Tambah Alat
+        </button>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-gold" id="btnSelesai" onclick="selesaiInput()" ${n>0?'':'disabled'}>
+          Selesai — Lanjut ke Konfirmasi (${n})
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function updateAddBtn() {
+  const canAdd = state.inputNama.trim() && state.inputJumlah && state.inputKondisi;
+  const b = $("btnTambah");
+  if(b) b.disabled = !canAdd;
+}
+
+function setKondisi(k) {
+  state.inputKondisi = k;
+  updateAddBtn();
+  renderAlat();
+}
+
+function hapusFoto(i) {
+  state.inputFotos.splice(i, 1);
+  renderAlat();
+}
+
+function hapusAlat(i) {
+  state.alatList.splice(i, 1);
+  renderAlat();
+}
+
+function tambahAlat() {
+  if(!state.inputNama.trim() || !state.inputJumlah || !state.inputKondisi) return;
+  state.alatList.push({
+    nama:    state.inputNama.trim(),
+    jumlah:  state.inputJumlah,
+    kondisi: state.inputKondisi,
+    catatan: state.inputCatatan.trim(),
+    fotos:   [...state.inputFotos],
+  });
+  resetInputAlat();
+  renderAlat();
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+function selesaiInput() {
+  if(state.alatList.length === 0) return;
+  state.screen = "review";
+  render();
+}
+
+function kembaliKeLab() {
+  if(state.alatList.length > 0) {
+    if(!confirm("Ganti lab akan menghapus semua alat yang sudah dicatat. Lanjutkan?")) return;
+  }
+  state.screen = "lab";
+  render();
+}
+
+/* ── KAMERA ────────────────────────────────────────────────────────── */
+let _camStream = null;
+
+async function startCamera() {
+  const vid = $("vid2");
+  const idle = $("camIdle");
+  const ctrl = $("camCtrl");
+  if(!vid) return;
+  try {
+    _camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode:"environment", width:{ideal:1280}, height:{ideal:720} },
+      audio: false
+    });
+    vid.srcObject = _camStream;
+    vid.style.display = "block";
+    if(idle) idle.style.display = "none";
+    if(ctrl) ctrl.classList.add("show");
+  } catch(err) {
+    alert("Tidak bisa akses kamera: " + err.message);
+  }
+}
+
+function stopCamera() {
+  if(_camStream) {
+    _camStream.getTracks().forEach(t=>t.stop());
+    _camStream = null;
+  }
+}
+
+function jepret() {
+  const vid = $("vid2");
+  if(!vid || !_camStream) return;
+  const cvs = document.createElement("canvas");
+  cvs.width  = vid.videoWidth  || 1280;
+  cvs.height = vid.videoHeight || 720;
+  const ctx = cvs.getContext("2d");
+  ctx.drawImage(vid, 0, 0);
+
+  // watermark: LABID_NAMAАЛАТ · timestamp
+  const namaAlat = state.inputNama.trim() || "alat";
+  const labId    = state.lab ? state.lab.id.toUpperCase() : "KKL3";
+  const wm = labId + "_" + namaAlat + "  ·  " + fmtNow();
+  ctx.font = "bold 16px 'Segoe UI',sans-serif";
+  const tw = ctx.measureText(wm).width;
+  const ph = 26, pw = tw + 20;
+  ctx.fillStyle = "rgba(0,65,107,.80)";
+  ctx.fillRect(8, cvs.height - ph - 8, pw, ph);
+  ctx.fillStyle = "#fbd504";
+  ctx.fillText(wm, 18, cvs.height - 12);
+
+  const dataUrl = cvs.toDataURL("image/jpeg", 0.82);
+  state.inputFotos.push(dataUrl);
+
+  // Kamera TIDAK dimatikan → bisa langsung jepret lagi
+  // Re-render hanya bagian preview tanpa rebuild seluruh DOM
+  // (supaya kamera tidak mati), tapi kita rebuild dan reattach stream
+  const prevStream = _camStream;
+  _camStream = null; // sementara kosongkan supaya stopCamera tidak mematikan stream
+  renderAlat();
+  // Reattach stream ke vid2 yang baru di-render
+  const vid2 = $("vid2");
+  const ctrl  = $("camCtrl");
+  const idle  = $("camIdle");
+  if(vid2 && prevStream) {
+    _camStream = prevStream;
+    vid2.srcObject = _camStream;
+    vid2.style.display = "block";
+    if(idle) idle.style.display = "none";
+    if(ctrl) ctrl.classList.add("show");
+  }
+}
+
+/* ── BAGIAN 3: Review & Submit ─────────────────────────────────────── */
+function renderReview() {
+  setProgress(80, "Konfirmasi sebelum mengirim");
+  const baik  = state.alatList.filter(a=>a.kondisi==="baik").length;
+  const rusak = state.alatList.filter(a=>a.kondisi==="rusak").length;
+  const canSend = state.namaPetugas.trim() && !state.sending;
+
+  app().innerHTML = `
+    <div class="card">
+      <div class="card-title">Langkah 3 / 3</div>
+      <div class="card-heading">Konfirmasi Pengambilan</div>
+      <div class="card-sub">Periksa kembali sebelum mengirim laporan.</div>
+
+      <div class="summary-box">
+        <div class="summary-row"><span>Lab / Sumber</span><span>${state.lab.nama}</span></div>
+        <div class="summary-row"><span>Total Alat</span><span>${state.alatList.length} item</span></div>
+        <div class="summary-row"><span>Kondisi Baik</span><span style="color:var(--green)">${baik} item</span></div>
+        <div class="summary-row"><span>Rusak/Hilang</span><span style="color:var(--red)">${rusak} item</span></div>
+      </div>
+
+      <label>Nama Petugas <span style="color:var(--red)">*</span></label>
+      <input type="text" id="iPetugas" placeholder="Nama lengkap petugas pengambilan"
+        value="${state.namaPetugas}"
+        oninput="state.namaPetugas=this.value;updateSendBtn()">
+
+      <div style="margin-top:16px;margin-bottom:8px;font-size:13px;font-weight:700;color:var(--muted);">
+        DAFTAR ALAT
+      </div>
+      <div class="alat-list">
+        ${state.alatList.map(a => `
+          <div class="alat-item">
+            ${a.fotos && a.fotos.length > 0
+              ? `<img class="alat-thumb" src="${a.fotos[0]}">`
+              : `<div class="alat-thumb-empty">📦</div>`}
+            <div class="alat-info">
+              <strong>${a.nama}</strong>
+              <div class="alat-meta">Jml: ${a.jumlah} · ${a.kondisi === "baik" ? "✅ Baik" : "⚠️ Rusak/Hilang"} · 📸 ${a.fotos ? a.fotos.length : 0} foto</div>
+              ${a.catatan ? `<div class="alat-meta">${a.catatan}</div>` : ""}
+            </div>
+            <span class="badge ${a.kondisi}">${a.kondisi === "baik" ? "Baik" : "Rusak"}</span>
+          </div>
+        `).join("")}
+      </div>
+
+      ${state.sendError ? `<div class="error-box" style="margin-top:14px;">${state.sendError}</div>` : ""}
+
+      <div class="btn-row" style="margin-top:20px;">
+        <button class="btn btn-ghost" onclick="state.screen='alat';render()">Tambah Alat Lagi</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-green" id="btnSend" onclick="submitData()" ${canSend?'':'disabled'}>
+          ${state.sending ? "Mengirim..." : "📤 Kirim Laporan"}
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function updateSendBtn() {
+  const b = $("btnSend");
+  if(b) b.disabled = !state.namaPetugas.trim() || state.sending;
+}
+
+/* ── SUBMIT KE GAS ─────────────────────────────────────────────────── */
+async function submitData() {
+  if(!state.namaPetugas.trim() || state.sending) return;
+
+  state.sending   = true;
+  state.sendError = null;
+  renderReview();
+
+  const submitId = "AMB-" + Date.now().toString().slice(-8);
+
+  if(!GAS_URL_AMBIL || GAS_URL_AMBIL.indexOf("GANTI") === 0) {
+    state.sending = false;
+    state.sendError = "URL Google Apps Script belum diatur. Isi variabel GAS_URL_AMBIL di kode HTML.";
+    renderReview();
+    return;
+  }
+
+  const payload = {
+    submitId:    submitId,
+    labId:       state.lab.id,
+    labNama:     state.lab.nama,
+    namaPetugas: state.namaPetugas.trim(),
+    waktu:       fmtNow(),
+    alatList:    state.alatList,  // tiap item punya .fotos (array)
+  };
+
+  try {
+    const res = await fetch(GAS_URL_AMBIL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload),
+    });
+    if(!res.ok) throw new Error("Status HTTP " + res.status);
+    const result = await res.json();
+    if(result.result === "success") {
+      state.submitId = result.submitId || submitId;
+      state.sending  = false;
+      state.screen   = "success";
+      render();
+    } else {
+      throw new Error(result.message || "Server menolak data.");
+    }
+  } catch(err) {
+    state.sending   = false;
+    state.sendError = "Gagal mengirim. Cek koneksi lalu coba lagi. (" + err.message + ")";
+    renderReview();
+  }
+}
+
+/* ── SUCCESS ───────────────────────────────────────────────────────── */
+function renderSuccess() {
+  setProgress(100, "Laporan berhasil dikirim");
+  const baik  = state.alatList.filter(a=>a.kondisi==="baik").length;
+  const rusak = state.alatList.filter(a=>a.kondisi==="rusak").length;
+
+  app().innerHTML = `
+    <div class="card">
+      <div class="success-screen">
+        <div class="success-icon">✅</div>
+        <h2>Laporan Terkirim!</h2>
+        <p>Data pengambilan alat dari <strong>${state.lab.nama}</strong> berhasil disimpan.</p>
+        <div class="summary-box" style="width:100%;text-align:left;">
+          <div class="summary-row"><span>ID Laporan</span><span style="font-family:monospace">${state.submitId}</span></div>
+          <div class="summary-row"><span>Petugas</span><span>${state.namaPetugas}</span></div>
+          <div class="summary-row"><span>Total Alat</span><span>${state.alatList.length} item</span></div>
+          <div class="summary-row"><span>Baik</span><span style="color:var(--green)">${baik}</span></div>
+          <div class="summary-row"><span>Rusak/Hilang</span><span style="color:var(--red)">${rusak}</span></div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:8px;" onclick="mulaiLagi()">
+          + Catat Pengambilan Baru
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function mulaiLagi() {
+  state = {
+    screen: "lab", lab: null, namaPetugas: "",
+    alatList: [], inputNama: "", inputJumlah: "",
+    inputKondisi: null, inputCatatan: "", inputFoto: null,
+    sending: false, sendError: null, submitId: null,
+    camStream: null, camLive: false,
+  };
+  render();
+}
+
+/* ── INIT ──────────────────────────────────────────────────────────── */
+render();
+</script>
+</body>
+</html>
+HTMLEOF
